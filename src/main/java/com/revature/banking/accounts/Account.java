@@ -29,7 +29,7 @@ public class Account implements Serializable {
 	}
 
 	public Account (double firstDeposit) {
-		this("checking", 0.0);
+		this("checking", firstDeposit);
 	}
 	
 	public Account (String newType) {
@@ -57,15 +57,19 @@ public class Account implements Serializable {
 		this.balance += deposit;
 	}
 	
-	public void makeWithdrawal(double withdrawal) throws AccountInvalidException {
+	public void makeWithdrawal(double withdrawal) throws AccountInvalidException, BadWithDrawalException {
 		if (approved <= 0) {
-			this.balance -= withdrawal;
-		} else {
 			throw new AccountInvalidException("Attempted withdrawal from unapproved account");
+		} else {
+			if (0 < withdrawal && withdrawal < balance) {
+				this.balance -= withdrawal;
+			} else {
+				throw new BadWithDrawalException("You can't make that withdrawal");
+			}
 		}
 	}
 	
-	public void transfer(Account toAccount, double amount) throws AccountInvalidException {
+	public void transfer(Account toAccount, double amount) throws AccountInvalidException, BadWithDrawalException {
 		this.makeWithdrawal(amount);
 		toAccount.makeDeposit(amount);
 	}
@@ -75,7 +79,7 @@ public class Account implements Serializable {
 	}
 	
 	void rejectAccount() {
-		this.approved = 0;
+		this.approved = -1;
 	}
 	
 	public short checkApproval() {

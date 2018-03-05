@@ -9,6 +9,8 @@ import java.util.Scanner;
 
 import static org.junit.Assert.*;
 
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -46,7 +48,8 @@ public class UserInterfaceTest {
 	@Test
 	public void testNoSerializedUserMap() {
 		s = new Scanner("2 testUser testPassword");
-		assertEquals(testUser, UserInterface.getCurrentUser(s));
+		UserLogin testMap = new UserLogin();
+		assertEquals(testUser.getUsername(), UserInterface.getCurrentUser(s, testMap).getUsername());
 	}
 	
 	@Test
@@ -54,8 +57,8 @@ public class UserInterfaceTest {
 		s = new Scanner("1 testUser testPassword");
 		
 		// Serialize a loginMap to test against
-		commitSerialData();
-		assertEquals(testUser, UserInterface.getCurrentUser(s));
+		UserLogin testMap = commitSerialData();
+		assertEquals(testUser.getUsername(), UserInterface.getCurrentUser(s, testMap).getUsername());
 	}
 	
 	@Test
@@ -63,24 +66,30 @@ public class UserInterfaceTest {
 		s = new Scanner("2 secondUser secondPassword");
 		
 		UserLogin checkLogin = commitSerialData();
-		assertEquals(secondUser, UserInterface.getCurrentUser(s));
+		final Logger logger = LogManager.getLogger(UserInterface.class);
+		
+		logger.debug("Checking that the user interface gave the right User");
+		User testNewUserUser = UserInterface.getCurrentUser(s, checkLogin);
+		assertEquals(secondUser.getUsername(), testNewUserUser.getUsername());
 		
 		// Also make sure that the new user was committed to the map
-		assertEquals(secondUser, checkLogin.getUser("secondUser"));
+		logger.debug("Checking that the user interface committed the user to the HashMap");
+		assertEquals(testNewUserUser, checkLogin.getUser("secondUser"));
 	}
 	
 	@Test 
 	public void testNewUserRetry() {
 		s = new Scanner("2 testUser testPassword 2 secondUser secondPassword");
 		
-		commitSerialData();
-		assertEquals(secondUser, UserInterface.getCurrentUser(s));
+		UserLogin testMap = commitSerialData();
+		assertEquals(secondUser.getUsername(), UserInterface.getCurrentUser(s, testMap).getUsername());
 	}
 	
 	@Test
 	public void testNoUser() {
 		s = new Scanner("3");
-		assertEquals(null, UserInterface.getCurrentUser(s));
+		UserLogin testMap = new UserLogin();
+		assertEquals(null, UserInterface.getCurrentUser(s, testMap));
 	}
 	
 	private UserLogin commitSerialData() {

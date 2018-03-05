@@ -18,28 +18,8 @@ public class UserInterface {
 		Scanner s;
 		s = new Scanner(System.in);
 		// Greet the user with the chance to log in or create an account
-		User currentUser = getCurrentUser(s);
-		
-		// If no current user was fetched we don't want to do any of this
-		// Offer the user a menu
-		if(!currentUser.equals(null)) {
-			menu(currentUser);
-		}
-		
-		System.out.println("Thank you for visiting Revbank! Revbank! It's the bankiest!");
-		System.out.println("If you did not mean to leave Revbank, then we're kicking you out for being a bad person");
-	}
-	
-	static User getCurrentUser(Scanner s) {
-		// We will need to check the users map for user logins
 		UserLogin loginMap;
-		User returnUser = null;
-		
-		// We will need to store a user's input for later
-		String input;
-		String inputUsername;
-		String inputPassword;
-		
+
 		// Load the loginMap from a file
 		try (FileInputStream file = new FileInputStream("loginMap.ser");
 				ObjectInputStream loginMapStream = new ObjectInputStream(file)) {
@@ -58,6 +38,28 @@ public class UserInterface {
 			logger.fatal("UserLogin class not found during deserialization", e);
 			loginMap = null;
 		}
+
+		User currentUser = getCurrentUser(s, loginMap);
+		
+		// If no current user was fetched we don't want to do any of this
+		// Offer the user a menu
+		if(!currentUser.equals(null)) {
+			menu(currentUser, s);
+		}
+		
+		System.out.println("Thank you for visiting Revbank! Revbank! It's the bankiest!");
+		System.out.println("If you did not mean to leave Revbank, then we're kicking you out for being a bad person");
+	}
+	
+	static User getCurrentUser(Scanner s, UserLogin loginMap) {
+		// We will need to check the users map for user logins
+		User returnUser = null;
+		
+		// We will need to store a user's input for later
+		String input;
+		String inputUsername;
+		String inputPassword;
+		
 		
 		// If opening the loginMap was successful
 		// Use a Scanner
@@ -79,8 +81,10 @@ public class UserInterface {
 					System.out.println("We here at Revbank always want to make sure that you feel like we care.");
 					System.out.println("Why don't you try logging in again but this time with an actual username?");
 					System.out.println("You can also create a new account if you'd like to join Revbank!");
-					return getCurrentUser(s);
+					return getCurrentUser(s, loginMap);
 				}
+
+				logger.info("Returning a user with username " + returnUser.getUsername());
 
 				return returnUser;
 
@@ -98,13 +102,15 @@ public class UserInterface {
 				
 				// Make sure the username isn't already taken
 				if (loginMap.addLogin(returnUser)) {
+					logger.info("Comitted a user with username " + loginMap.getUser(returnUser.getUsername()).getUsername());
+					logger.info("Returning a user with user with username " + returnUser.getUsername());
 					return returnUser;
 				}
 
 				System.out.println("Someone is already using that username.");
 				System.out.println("Either try again with a new username");
 				System.out.println("or login using the one you already have you dumb dumb");
-				return getCurrentUser(s);
+				return getCurrentUser(s, loginMap);
 
 			default:
 				System.out.println("If you didn't want to use Revbank, why did you come to Revbank? Are you stupid?");
@@ -112,8 +118,63 @@ public class UserInterface {
 		}
 	}
 	
-	private static void menu (User menuUser) {
+	private static void menu (User menuUser, Scanner s) {
+		// We will need to get input from the user
+		String input;
+		
+		// Different behaviors based on the user's authorization levels
+		boolean userIsAdmin = menuUser.getUsername().equals("BankAdministrator");
 		// Use a scanner class to give the user a chance to interact with the bank including log out
 		// If the user is an administrator give them special menu options
+		System.out.println("It's time for some moooore options! You like options, don't you? Everyone loves options");
+		System.out.println("1. Apply for one of our great and wonderful accounts");
+		System.out.println("2. Withdraw from one of your favorite accounts");
+		System.out.println("3. Make a deposit into an account that you feel doesn't get nearly all the love it needs");
+		System.out.println("4. Make a transfer from one of your accounts to another person's account");
+		System.out.println("5. Log out");
+		
+		// Special administrative priviledges
+		if (userIsAdmin) {
+			System.out.println();
+			System.out.println("Special options for special people with special powers");
+			System.out.println("6. Look up the username of one of your marks");
+			System.out.println("7. Play god and approve or reject requests to open accounts on a whim");
+			System.out.println("8. Make an example of one of your customers by closing their account for all to see");
+		}
+		
+		// Get input from the user
+		input = s.next();
+		switch (input) {
+			case "1":
+				// Let the user apply for an account
+
+			case "2":
+				// Let the user withdraw from an existing account
+				
+			case "3":
+				// Let the user make a deposit into one of their accounts
+
+			case "4":
+				// Let the user transfer money to another user's account
+				
+			default:
+				if (userIsAdmin) {
+					switch (input) {
+						case "6":
+							// Do a username lookup
+							
+						case "7":
+							// Work on the approval queue
+							
+						case "8":
+							// Delete an account
+							
+						default:
+							// We're done here
+					}
+				} else {
+					// We're done here
+				}
+		}
 	}
 }

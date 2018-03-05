@@ -8,27 +8,28 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-class ApprovalQueueTest {
-
+public class ApprovalQueueTest {
 	@BeforeClass
-	static void setUpBeforeClass() throws Exception {
+	public static void setUpBeforeClass() throws Exception {
 	}
 
 	@AfterClass
-	static void tearDownAfterClass() throws Exception {
+	public static void tearDownAfterClass() throws Exception {
 	}
 
 	@Before
-	void setUp() throws Exception {
+	public void setUp() throws Exception {
 	}
 
 	@After
-	void tearDown() throws Exception {
+	public void tearDown() throws Exception {
 	}
 
 	@Test
-	void test() {
-		fail("Not yet implemented");
+	public void test() {
+		ApprovalQueue testQueue = new ApprovalQueue();
+		Account testAccount = new Account();
+		testQueue.addNewAccount(testAccount);
+		assertEquals(testAccount, testQueue.checkNextAccount());
 	}
-
 }
