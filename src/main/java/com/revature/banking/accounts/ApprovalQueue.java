@@ -11,11 +11,11 @@ public class ApprovalQueue {
 		pendingApprovals = new LinkedList<Account>();
 	}
 	
-	public Account checkNextAccount () {
+	Account checkNextAccount () {
 		return pendingApprovals.poll();
 	}
 	
-	void addNewAccount (Account newAccount) {
+	public void addNewAccount (Account newAccount) {
 		pendingApprovals.add(newAccount);
 	}
 }
