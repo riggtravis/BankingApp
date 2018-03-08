@@ -15,22 +15,24 @@ import com.revature.banking.accounts.Account;
 import com.revature.banking.accounts.AccountInvalidException;
 import com.revature.banking.accounts.ApprovalQueue;
 import com.revature.banking.accounts.BadWithDrawalException;
+import com.revature.banking.accounts.SerialBlobHackDoNotRepeatEver;
 import com.revature.banking.login.UserLogin;
 
 public class UserInterface {
     private static final Logger logger = LogManager.getLogger(UserInterface.class);
     private static UserLogin masterLoginTable;
     private static ApprovalQueue pendingAccounts;
+    private static SerialBlobHackDoNotRepeatEver serialBlob;
 
     public static void main (String[] args) {
         Scanner s;
         s = new Scanner(System.in);
         // Greet the user with the chance to log in or create an account
 
-        // Load the loginMap from a file
-        try (FileInputStream file = new FileInputStream("loginMap.ser");
+        // Load the serialBlob from a file
+        try (FileInputStream file = new FileInputStream("blob.ser");
                 ObjectInputStream loginMapStream = new ObjectInputStream(file)){
-            masterLoginTable = (UserLogin) loginMapStream.readObject();
+            serialBlob = (SerialBlobHackDoNotRepeatEver) loginMapStream.readObject();
         } catch (FileNotFoundException e) {
             // This just means we need to create a new loginMap
             masterLoginTable = new UserLogin();
@@ -40,35 +42,38 @@ public class UserInterface {
              */
             System.out.println("Sorry, the bank is not currently open. Please leave");
             logger.fatal("IO exception:", e);
-            masterLoginTable = null;
+            serialBlob = null;
         } catch (ClassNotFoundException e) {
             // This should really never happen
             System.out.println("Sorry, the bank is not currently dealing with your problems.");
             logger.fatal("UserLogin class not found during deserialization", e);
-            masterLoginTable = null;
+            serialBlob = null;
+        }
+        
+        if (serialBlob != null) {
+			masterLoginTable = serialBlob.loginsToBeSerialized;
+			pendingAccounts = serialBlob.queueToBeSerialized;
+        } else {
+        	serialBlob = new SerialBlobHackDoNotRepeatEver();
+        	masterLoginTable = new UserLogin();
+        	pendingAccounts = new ApprovalQueue();
         }
 
         User currentUser = getCurrentUser(s, masterLoginTable);
 
         // If no current user was fetched we don't want to do any of this
         // Offer the user a menu
-        if(!(currentUser.equals(null))) {
+        if(currentUser != null) {
             menu(currentUser, s);
         }
         
-        // Save the account queue and the logintable to file
-        try (FileOutputStream file = new FileOutputStream("loginMap.ser");
-        		ObjectOutputStream loginMapStream = new ObjectOutputStream(file)) {
-        	loginMapStream.writeObject(masterLoginTable);
-        } catch (FileNotFoundException e) {
-			logger.fatal("Unable to open file for writing");
-		} catch (IOException e) {
-			logger.fatal("Unable to open file for writing, but even worse this time");
-		}
+        serialBlob.loginsToBeSerialized = masterLoginTable;
+        serialBlob.queueToBeSerialized = pendingAccounts;
         
-        try (FileOutputStream file = new FileOutputStream("pendingAccounts.ser");
+        // Save the account queue and the logintable to file
+        try (FileOutputStream file = new FileOutputStream("blob.ser");
         		ObjectOutputStream loginMapStream = new ObjectOutputStream(file)) {
-        	loginMapStream.writeObject(pendingAccounts);
+        	loginMapStream.writeObject(serialBlob);
         } catch (FileNotFoundException e) {
 			logger.fatal("Unable to open file for writing");
 		} catch (IOException e) {
@@ -105,7 +110,7 @@ public class UserInterface {
             	// Get a user name and password from the user
             	System.out.println("What, exactly, if anything, is your username?");
                 returnUser = loginMap.getUser(s.next());
-                if (returnUser.equals(null)) {
+                if (returnUser == null) {
                     // Try again to get a user
                     System.out.println("Oh nooo! It looks like that's not a valid username.");
                     System.out.println("We here at Revbank always want to make sure that you feel like we care.");
@@ -115,8 +120,16 @@ public class UserInterface {
                 }
 
                 logger.info("Returning a user with username " + returnUser.getUsername());
-
-                return returnUser;
+                
+                // Check the password
+                System.out.println("Okay, that's definitely a username! Now to check that password of yours");
+                if(returnUser.checkPassword(s.next())) {
+                	System.out.println("HEY EVERYONE. THIS REQUEST IS LEGIT, GIVE HIM WHAT HE WANTS");
+					return returnUser;
+                }
+                
+                System.out.println("What even are you doing? Try again but be less terrible");
+                return null;
 
             case "2":
                 // Create a new user and add them to the loginMap
@@ -179,18 +192,22 @@ public class UserInterface {
             case "1":
                 // Let the user apply for an account
                 applyForAccount(menuUser);
+                return;
 
             case "2":
                 // Let the user withdraw from an existing account
                 withdrawFromAccount(menuUser);
+                return;
 
             case "3":
                 // Let the user make a deposit into one of their accounts
             	depositToAccount(menuUser);
+            	return;
 
             case "4":
                 // Let the user transfer money to another user's account
                 makeATransfer(menuUser);
+                return;
 
             default:
                 if (userIsAdmin) {
@@ -205,51 +222,44 @@ public class UserInterface {
 
                         default:
                             // We're done here
+                        	return;
                     }
                 } else {
                     // We're done here
+                	return;
                 }
         }
     }
 
     private static void doApprovals(User menuUser) {
+    	logger.info("In account approval process");
     	Account approvalAccount;
     	Scanner s = new Scanner(System.in);
     	String approveWithUpwardInflection;
 		// Get the pending accounts from a file
-		try (FileInputStream file = new FileInputStream("pendingAccounts.ser");
-		        ObjectInputStream pendingAccountStream = new ObjectInputStream(file)){
-		    try {
-				pendingAccounts = (ApprovalQueue) pendingAccountStream.readObject();
-			} catch (ClassNotFoundException e) {
-				logger.fatal(e);
-			}
-		} catch (FileNotFoundException e) {
-			System.out.println("There are currently no accounts to approve");
-		} catch (IOException e) {
-			System.out.println("The bank is having serious issues. You're probably to blame");
-			logger.fatal(e);
-		}
 		
-		do {
-			approvalAccount = pendingAccounts.checkNextAccount();
-			if (approvalAccount != null) {
-				System.out.println("Approve new " + approvalAccount.getAccountType() + " account?");
-				System.out.println("1. Yes");
-				System.out.println("2. No");
-				approveWithUpwardInflection = s.next();
-				switch (approveWithUpwardInflection) {
-				case "1":
-					approvalAccount.approveAccount();
-					break;
-				case "2":
-					approvalAccount.rejectAccount();
-					break;
-				default:
-					break;
+		if (pendingAccounts != null) {
+			logger.info("We're going to start iterating over the approvalQueue now");
+			do {
+				approvalAccount = pendingAccounts.checkNextAccount();
+				if (approvalAccount != null) {
+					System.out.println("Approve new " + approvalAccount.getAccountType() + " account?");
+					System.out.println("1. Yes");
+					System.out.println("2. No");
+					approveWithUpwardInflection = s.next();
+					switch (approveWithUpwardInflection) {
+					case "1":
+						approvalAccount.approveAccount();
+						break;
+					case "2":
+						approvalAccount.rejectAccount();
+						break;
+					default:
+						break;
+					}
 				}
-			}
-		} while (approvalAccount != null);
+			} while (approvalAccount != null);
+		}
 	}
 
 	private static void userLookup(User menuUser) {
@@ -367,6 +377,7 @@ public class UserInterface {
 
         // Get the account
         withdrawalAccount = brokePerson.getAccount(accountType);
+        logger.info("Withdrawl account has an approval status of " + withdrawalAccount.checkApproval());
         System.out.println("You have " + withdrawalAccount.getBalance() + " monies in that account");
         System.out.println("How many of our --AHEM-- your monies would you like to take away from us?");
         withdrawalAmount = Double.parseDouble(s.next());
@@ -384,37 +395,7 @@ public class UserInterface {
     }
     
     private static void addToAccountQueue (Account newAccount) {
-    	ApprovalQueue accountsToBeApproved = null;
-
-    	// Load existing accounts from file
-        try (FileInputStream file = new FileInputStream("accountQueue.ser");
-                ObjectInputStream accountQueueFile = new ObjectInputStream(file)) {
-            accountsToBeApproved = (ApprovalQueue) accountQueueFile.readObject();
-            accountsToBeApproved.addNewAccount(newAccount);
-        } catch (FileNotFoundException e) {
-            // This is actually okay. It just means we need to create a new loginMap
-            accountsToBeApproved = new ApprovalQueue();
-        } catch (IOException e) {
-            // This is less recoverable. It means that the operating system letting us have files
-            System.out.println("Sorry, the bank is not currently open. Please leave");
-            logger.fatal("IO exception:", e);
-        } catch (ClassNotFoundException e) {
-            // This should really never happen
-            System.out.println("Sorry, the bank is not currently dealing with your problems.");
-            logger.fatal("ApprovalQueue class not found during deserialization", e);
-        } finally {
-			// Now that we're leaving the scope where accountsToBeApproved was declared in, let's serialize it back to file
-			try (FileOutputStream file = new FileOutputStream ("accountQueue.ser");
-					ObjectOutputStream accountQueueFile = new ObjectOutputStream(file)) {
-				accountQueueFile.writeObject(accountsToBeApproved);
-			} catch (FileNotFoundException e) {
-				System.out.println("The bank is having issues with account creations");
-				logger.fatal("File couldn't be created:", e);
-			} catch (IOException e) {
-				System.out.println("I don't know how to tell you this, but the bank is all broken and sad");
-				logger.fatal("IO exception:", e);
-			}
-        }
+		pendingAccounts.addNewAccount(newAccount);
     }
     
     public static void depositToAccount(User wealthyPerson) {
