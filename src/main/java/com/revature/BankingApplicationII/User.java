@@ -2,6 +2,7 @@ package com.revature.BankingApplicationII;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.Set;
 
 import com.revature.banking.accounts.Account;
 import com.revature.banking.login.BadPasswordException;
@@ -33,6 +34,10 @@ public class User implements Serializable {
 
 	public boolean checkPassword (String triedPassword) {
 		return (triedPassword.equals(this.password));
+	}
+	
+	public Set<String> getAccountNames () {
+		return accounts.keySet();
 	}
 
 	public void changePassword (String newPassword, String oldPassword) throws BadPasswordException {

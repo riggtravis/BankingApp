@@ -11,7 +11,7 @@ public class ApprovalQueue {
 		pendingApprovals = new LinkedList<Account>();
 	}
 	
-	Account checkNextAccount () {
+	public Account checkNextAccount () {
 		return pendingApprovals.poll();
 	}
 	

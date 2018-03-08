@@ -74,11 +74,11 @@ public class Account implements Serializable {
 		toAccount.makeDeposit(amount);
 	}
 	
-	void approveAccount() {
+	public void approveAccount() {
 		this.approved = 1;
 	}
 	
-	void rejectAccount() {
+	public void rejectAccount() {
 		this.approved = -1;
 	}
 	

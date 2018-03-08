@@ -31,4 +31,9 @@ public class UserLogin implements Serializable {
 		
 		return false;
 	}
+	
+	public void removeUser (String ridUser) {
+		System.out.println("Lol");
+		logins.remove(ridUser);
+	}
 }

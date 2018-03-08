@@ -20,6 +20,7 @@ import com.revature.banking.login.UserLogin;
 public class UserInterface {
     private static final Logger logger = LogManager.getLogger(UserInterface.class);
     private static UserLogin masterLoginTable;
+    private static ApprovalQueue pendingAccounts;
 
     public static void main (String[] args) {
         Scanner s;
@@ -51,9 +52,28 @@ public class UserInterface {
 
         // If no current user was fetched we don't want to do any of this
         // Offer the user a menu
-        if(!currentUser.equals(null)) {
+        if(!(currentUser.equals(null))) {
             menu(currentUser, s);
         }
+        
+        // Save the account queue and the logintable to file
+        try (FileOutputStream file = new FileOutputStream("loginMap.ser");
+        		ObjectOutputStream loginMapStream = new ObjectOutputStream(file)) {
+        	loginMapStream.writeObject(masterLoginTable);
+        } catch (FileNotFoundException e) {
+			logger.fatal("Unable to open file for writing");
+		} catch (IOException e) {
+			logger.fatal("Unable to open file for writing, but even worse this time");
+		}
+        
+        try (FileOutputStream file = new FileOutputStream("pendingAccounts.ser");
+        		ObjectOutputStream loginMapStream = new ObjectOutputStream(file)) {
+        	loginMapStream.writeObject(pendingAccounts);
+        } catch (FileNotFoundException e) {
+			logger.fatal("Unable to open file for writing");
+		} catch (IOException e) {
+			logger.fatal("Unable to open file for writing, but even worse this time");
+		}
 
         System.out.println("Thank you for visiting Revbank! Revbank! It's the bankiest!");
         System.out.println("If you did not mean to leave Revbank, then we're kicking you out for being a bad person");
@@ -82,6 +102,8 @@ public class UserInterface {
         switch (input) {
             case "1":
                 // Check the users map to see if this user exists
+            	// Get a user name and password from the user
+            	System.out.println("What, exactly, if anything, is your username?");
                 returnUser = loginMap.getUser(s.next());
                 if (returnUser.equals(null)) {
                     // Try again to get a user
@@ -175,12 +197,11 @@ public class UserInterface {
                     switch (input) {
                         case "6":
                             // Do a username lookup
+                        	userLookup(menuUser);
 
                         case "7":
                             // Work on the approval queue
-
-                        case "8":
-                            // Delete an account
+                        	doApprovals(menuUser);
 
                         default:
                             // We're done here
@@ -191,7 +212,85 @@ public class UserInterface {
         }
     }
 
-    private static void applyForAccount(User applicant) {
+    private static void doApprovals(User menuUser) {
+    	Account approvalAccount;
+    	Scanner s = new Scanner(System.in);
+    	String approveWithUpwardInflection;
+		// Get the pending accounts from a file
+		try (FileInputStream file = new FileInputStream("pendingAccounts.ser");
+		        ObjectInputStream pendingAccountStream = new ObjectInputStream(file)){
+		    try {
+				pendingAccounts = (ApprovalQueue) pendingAccountStream.readObject();
+			} catch (ClassNotFoundException e) {
+				logger.fatal(e);
+			}
+		} catch (FileNotFoundException e) {
+			System.out.println("There are currently no accounts to approve");
+		} catch (IOException e) {
+			System.out.println("The bank is having serious issues. You're probably to blame");
+			logger.fatal(e);
+		}
+		
+		do {
+			approvalAccount = pendingAccounts.checkNextAccount();
+			if (approvalAccount != null) {
+				System.out.println("Approve new " + approvalAccount.getAccountType() + " account?");
+				System.out.println("1. Yes");
+				System.out.println("2. No");
+				approveWithUpwardInflection = s.next();
+				switch (approveWithUpwardInflection) {
+				case "1":
+					approvalAccount.approveAccount();
+					break;
+				case "2":
+					approvalAccount.rejectAccount();
+					break;
+				default:
+					break;
+				}
+			}
+		} while (approvalAccount != null);
+	}
+
+	private static void userLookup(User menuUser) {
+    	Scanner s = new Scanner(System.in);
+    	String username;
+    	String action;
+    	User roob;
+    	String[] roobAccounts;
+    	
+    	// Give the almighty power to do what must be done
+    	System.out.println("Please enter the username of the unsuspecting roob you wish to screw over");
+    	roob = masterLoginTable.getUser(s.next());
+    	
+    	if (roob.equals(null)) {
+    		System.out.println("This is not the form of incompetence we expect out of employees at Revbank! Get out!");
+    		return;
+    	}
+    	
+    	System.out.println("That chump! What should we do to them?");
+    	System.out.println("1. Get a list of all of their accounts and balances");
+    	System.out.println("2. Delete them. Lulz");
+    	System.out.println("3. Plot their demise");
+    	action = s.next();
+    	
+    	switch (action) {
+    	case "1":
+    		roobAccounts = (String[]) roob.getAccountNames().toArray();
+    		for (int i = 0; i < roobAccounts.length; i++) {
+    			System.out.println(roob.getUsername() + " has " + roob.getAccount(roobAccounts[i]).getBalance() + " in " + roobAccounts[1]);
+    		}
+    		break;
+    	case "2":
+    		masterLoginTable.removeUser(roob.getUsername());
+    		break;
+    	default:
+    		System.out.println("Soon...");
+    		break;
+    	}
+	}
+
+	private static void applyForAccount(User applicant) {
         // Use a scanner to get input from the user
         Scanner s = new Scanner(System.in);
         String accountType;
@@ -387,10 +486,10 @@ public class UserInterface {
 				startAccount.transfer(luckyPerson.getAccount(s.next()), transferAmount);
 			} catch (AccountInvalidException e) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
+				logger.fatal("There was an issue with on of your accounts");
 			} catch (BadWithDrawalException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				// TODO Auto-generated catch block/
+				logger.fatal("Maybe make a withdrawal that's actuall possible?");
 			}
         }
     }
