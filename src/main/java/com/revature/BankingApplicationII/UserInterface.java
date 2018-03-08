@@ -28,13 +28,15 @@ public class UserInterface {
 
         // Load the loginMap from a file
         try (FileInputStream file = new FileInputStream("loginMap.ser");
-                ObjectInputStream loginMapStream = new ObjectInputStream(file)) {
+                ObjectInputStream loginMapStream = new ObjectInputStream(file)){
             masterLoginTable = (UserLogin) loginMapStream.readObject();
         } catch (FileNotFoundException e) {
-            // This is actually okay. It just means we need to create a new loginMap
+            // This just means we need to create a new loginMap
             masterLoginTable = new UserLogin();
         } catch (IOException e) {
-            // This is less recoverable. It means that the operating system letting us have files
+            /* This is less recoverable.
+             * It means that the operating system letting us have files
+             */
             System.out.println("Sorry, the bank is not currently open. Please leave");
             logger.fatal("IO exception:", e);
             masterLoginTable = null;
@@ -166,6 +168,7 @@ public class UserInterface {
 
             case "4":
                 // Let the user transfer money to another user's account
+                makeATransfer(menuUser);
 
             default:
                 if (userIsAdmin) {
@@ -196,56 +199,60 @@ public class UserInterface {
         String jointAccount;
         String jointAccountType;
         User jointUser;
+        boolean done = false;
         
         System.out.println("Revbank understands that humans partner with other humans. You can open a joint account");
         System.out.println("If that's something you would like to do please press other 'y' or 'n' and then enter");
         jointAccount = s.next();
         
         switch (jointAccount) {
-        case "y":
-        case "Y":
-        	System.out.println("Can do! Let's start by getting the user name for your partner. Please type that now!");
-        	jointAccount = s.next();
-        	
-        	// In order to check if that's a legitimate user, check the loginmap
-        	jointUser = masterLoginTable.getUser(jointAccount);
-        	if (!jointUser.equals(null)) {
-        		System.out.println("I'm sure your partner is very excited about this account! It should be fun");
-        		
-        		// Make sure the account can be added to the partner's account map
-        		System.out.println("What sort of account was it that you were planning on putting your monies into?");
-        		jointAccountType = s.next();
-        		
-        		// The both users can't already have this type of account
-        		if(jointUser.getAccount(jointAccount).equals(null) && applicant.getAccount(jointAccount).equals(null)){
-        			System.out.println("How many monies are you and your partner going to put into this account?");
-        			jointAccount = s.next();
-        			applicant.applyForJointAccoint(jointUser, jointAccountType, Double.parseDouble(jointAccount));
-        		} else {
-        			System.out.println("Uh oh! Looks like you already have one of those! Maybe start a new account");
-        			menu(applicant, s);
-        		}
-        	} else {
-        		System.out.println("Hmmm... Are you sure that's a person? I'm not convinced that's a person");
-        	}
+            case "y":
+            case "Y":
+                System.out.println("Can do! Let's start by getting the user name for your partner. Please type that now!");
+                jointAccount = s.next();
+                
+                // In order to check if that's a legitimate user, check the loginmap
+                jointUser = masterLoginTable.getUser(jointAccount);
+                if (!jointUser.equals(null)) {
+                    System.out.println("I'm sure your partner is very excited about this account! It should be fun");
+                    
+                    // Make sure the account can be added to the partner's account map
+                    System.out.println("What sort of account was it that you were planning on putting your monies into?");
+                    jointAccountType = s.next();
+                    
+                    // The both users can't already have this type of account
+                    if(jointUser.getAccount(jointAccount).equals(null) && applicant.getAccount(jointAccount).equals(null)){
+                        System.out.println("How many monies are you and your partner going to put into this account?");
+                        jointAccount = s.next();
+                        applicant.applyForJointAccoint(jointUser, jointAccountType, Double.parseDouble(jointAccount));
+                    } else {
+                        System.out.println("Uh oh! Looks like you already have one of those! Maybe start a new account");
+                        done = true;
+                        menu(applicant, s);
+                    }
+                } else {
+                    System.out.println("Hmmm... Are you sure that's a person? I'm not convinced that's a person");
+                }
         }
 
-        System.out.println("Here at Revbank, we care about you! Making sure you get the care you need is important");
-        System.out.println("Now would be a good time for you to enter what kind of account you would like to open");
-        accountType = s.next();
+        if (!done) {
+            System.out.println("Here at Revbank, we care about you! Making sure you get the care you need is important");
+            System.out.println("Now would be a good time for you to enter what kind of account you would like to open");
+            accountType = s.next();
 
-        System.out.println("Wowie! That's definitely a great kind of account to open. Tell all your friends about it!");
-        System.out.println("But how much do you want to put into it? We at Revbank recommend as much as possible");
-        initialAmount = Double.parseDouble(s.next());
+            System.out.println("Wowie! That's definitely a great kind of account to open. Tell all your friends about it!");
+            System.out.println("But how much do you want to put into it? We at Revbank recommend as much as possible");
+            initialAmount = Double.parseDouble(s.next());
 
-        System.out.println("We can put that much money in your account! We promise that nothing sinister will happen");
-        System.out.println("Please give our associates some time to look over your account and make sure it's legit");
-        applicant.applyForAccount(accountType, initialAmount);
-        
-        // Add this account to the account Queue
-        addToAccountQueue(applicant.getAccount(accountType));
+            System.out.println("We can put that much money in your account! We promise that nothing sinister will happen");
+            System.out.println("Please give our associates some time to look over your account and make sure it's legit");
+            applicant.applyForAccount(accountType, initialAmount);
+            
+            // Add this account to the account Queue
+            addToAccountQueue(applicant.getAccount(accountType));
 
-        menu(applicant, s);
+            menu(applicant, s);
+        }
     }
 
     private static void withdrawFromAccount(User brokePerson) {
@@ -335,5 +342,56 @@ public class UserInterface {
 		} finally {
 			s.close();
 		}
+    }
+
+    public static void makeATransfer(User kindlyPerson) {
+        Scanner s = new Scanner(System.in);
+        String accountType;
+        Double transferAmount;
+        Account startAccount;
+        boolean done = false;
+        User luckyPerson;
+
+        System.out.println("Oh? So you want to make some of your monies be someone else's monies?");
+        System.out.println("That's fine as long as all the monies stay here in Revbank! Revbank is best bank, remember");
+        System.out.println("Please use your keyboard to enter which of your accounts you want to transfer from");
+        accountType = s.next();
+
+        startAccount = kindlyPerson.getAccount(accountType);
+        if (startAccount.equals(null)) {
+            System.out.println("You don't have one of those. Be less dumb. Please try again to do something, but be less dumb");
+            done = true;
+            menu(kindlyPerson, s);
+        }
+
+        if (!done) {
+            System.out.println("Ooooooh! You have " + startAccount.getBalance() + " in that account");
+            System.out.println("How many of your monies do you want give to someone else on a whim?");
+            transferAmount = Double.parseDouble(s.next());
+
+            System.out.println("What is the username of the person that you are departing with your monies for?");
+            
+            luckyPerson = masterLoginTable.getUser(s.next());
+
+            if (luckyPerson.equals(null)) {
+                System.out.println("Whoa there! That's not a person. You can't transfer monies to a person that's not a person");
+                done = true;
+                menu(kindlyPerson, s);
+            }
+
+            if (!done) {
+                System.out.println("Cool! Now what kind of account were you hoping to transfer into?");
+            }
+            
+            try {
+				startAccount.transfer(luckyPerson.getAccount(s.next()), transferAmount);
+			} catch (AccountInvalidException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (BadWithDrawalException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+        }
     }
 }
